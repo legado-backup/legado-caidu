@@ -131,18 +131,6 @@ watch(
   { immediate: true },
 );
 
-const chatModelScrollItems = computed((): CustomSelectItem[] =>
-  chatModelOptions.value.map((m) => ({
-    kind: "item",
-    id: m,
-    label: m,
-  })),
-);
-
-const chatModelDisplayLabel = computed(() =>
-  modelValue.value.chat.model.trim(),
-);
-
 async function refreshChatModels(opts?: { pullDone?: AppPullFlashDone }) {
   const pullDone = opts?.pullDone;
   chatModelsLoading.value = true;
@@ -158,11 +146,12 @@ async function refreshChatModels(opts?: { pullDone?: AppPullFlashDone }) {
         modelValue.value.chat.baseUrl,
         r.models,
       );
-      if (chatModelOptions.value.length > 0) {
-        const cur = modelValue.value.chat.model.trim();
-        if (!cur || !chatModelOptions.value.includes(cur)) {
-          modelValue.value.chat.model = chatModelOptions.value[0]!;
-        }
+      // 仅在未填写模型时填入首个拉取结果；已填模型不强制覆盖（部分服务商无模型查询接口，允许手输）
+      if (
+        chatModelOptions.value.length > 0 &&
+        !modelValue.value.chat.model.trim()
+      ) {
+        modelValue.value.chat.model = chatModelOptions.value[0]!;
       }
     } else chatModelOptions.value = [];
   } finally {
@@ -172,8 +161,9 @@ async function refreshChatModels(opts?: { pullDone?: AppPullFlashDone }) {
   }
 }
 
-function onChatModelPanelOpenChange(isOpen: boolean) {
-  if (!isOpen || chatModelsLoading.value) return;
+/** 聚焦模型输入且尚无建议列表时静默拉取（与远程嵌入模型一致） */
+function onChatModelFocusIn() {
+  if (chatModelsLoading.value) return;
   if (chatModelOptions.value.length > 0) return;
   void refreshChatModels();
 }
@@ -434,19 +424,16 @@ defineExpose({
           <div class="settingsRowMain settingsRowMain--baseline">
             <span class="settingsLabel short">模型</span>
             <div class="aiChatModelRow">
-              <div class="aiModelToolbar aiChatModelToolbar">
-                <AppCustomSelect
-                  class="aiModelSelect aiChatModelSelect"
-                  :model-value="modelValue.chat.model"
-                  :display-label="chatModelDisplayLabel"
-                  placeholder="选择模型…"
-                  :fixed-top-items="selectListsEmpty"
-                  :scroll-items="chatModelScrollItems"
-                  :fixed-bottom-items="selectListsEmpty"
+              <div
+                class="aiModelToolbar aiChatModelToolbar"
+                @focusin="onChatModelFocusIn"
+              >
+                <ApiEndpointInput
+                  v-model="modelValue.chat.model"
+                  :suggestions="chatModelOptions"
+                  placeholder="输入模型 ID…"
+                  aria-label="对话模型"
                   :scroll-max-height="260"
-                  ariaLabel="对话模型"
-                  @panel-open-change="onChatModelPanelOpenChange"
-                  @update:model-value="modelValue.chat.model = $event"
                 />
                 <AppPullFlashButton
                   ref="chatPullBtnRef"
@@ -856,7 +843,7 @@ defineExpose({
   width: 100%;
 }
 
-.aiChatModelSelect {
+.aiChatModelToolbar :deep(.apiEndpointInput) {
   flex: 1 1 160px;
   min-width: 0;
 }
