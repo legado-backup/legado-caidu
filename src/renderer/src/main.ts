@@ -6,6 +6,8 @@ import "./styles/settingsPanel.css";
 import "./styles/characterCardHolo.css";
 import "./styles/characterCardHoloEffects.css";
 import { installEscapeBlurTextFieldListener } from "./utils/escapeBlurTextField";
+import { ensureSystemFontCatalog } from "./utils/systemFontCatalog";
 
 installEscapeBlurTextFieldListener();
+void ensureSystemFontCatalog();
 createApp(App).mount("#app");

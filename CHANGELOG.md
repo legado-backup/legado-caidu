@@ -3,6 +3,7 @@
 改进：
 
 - 「设置 → AI 阅读助手 → 对话模型」支持手动输入模型 ID（部分服务商没有提供模型查询接口） [#100](https://github.com/ssnangua/ColorTxt/issues/100)，[#101](https://github.com/ssnangua/ColorTxt/pull/101)
+- 系统字体列表会区分同一字体的不同字重（常规、粗体、细体等），选中后按该字重显示 [#93](https://github.com/ssnangua/ColorTxt/issues/93)
 
 修复：
 

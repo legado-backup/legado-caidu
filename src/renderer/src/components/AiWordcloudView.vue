@@ -222,6 +222,14 @@ function cloudRotateForMode(mode: WordcloudAngleMode, rng: () => number): number
 }
 
 async function layoutWords(seed: number): Promise<CloudWord[]> {
+  const family = cloudFontFamily.value;
+  if (family && document.fonts?.load) {
+    try {
+      await document.fonts.load(`normal normal 16px ${family}`);
+    } catch {
+      // 字重别名尚未就绪时按回退字体排版
+    }
+  }
   const list = props.words
     .filter((w) => w.text.trim() && w.weight > 0)
     .sort((a, b) => b.weight - a.weight)

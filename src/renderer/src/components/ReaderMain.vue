@@ -180,6 +180,7 @@ import {
 } from "../constants/selectionToolbar";
 import { annotationMarkerCssRules } from "../reader/readerAnnotationDecor";
 import { floorReadingPercentFromScrollRatio } from "../utils/format";
+import { whenSystemFontFacesReady } from "../utils/systemFontCatalog";
 import { bookTitleForExport } from "../utils/readerAnnotationExport";
 import {
   hasEscBeforeModalLayers,
@@ -4698,6 +4699,21 @@ onMounted(() => {
       fastScrollSensitivity: props.fastScrollSensitivity,
       stickyChapterTitleEnabled: props.stickyChapterTitleEnabled,
     }),
+  });
+  // 字重 @font-face 晚于编辑器创建时，重新测量以便按锁定字重排版
+  void whenSystemFontFacesReady().then(() => {
+    const e = editor.value;
+    if (!e || !currentFontFamily) return;
+    const size = e.getOption(monaco.editor.EditorOption.fontSize);
+    const family = currentFontFamily;
+    const done = () => {
+      if (!editor.value) return;
+      monaco.editor.remeasureFonts();
+      setFontFamily(family);
+    };
+    const pending = document.fonts?.load(`${size}px ${family}`);
+    if (pending) void pending.then(done, done);
+    else done();
   });
   chapterTitleDecorationsCollection.value =
     editor.value.createDecorationsCollection();

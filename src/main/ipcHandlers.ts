@@ -22,6 +22,8 @@ import {
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { getFonts } from "font-list";
+import { familyNamesToRawFaces, type RawSystemFontFace } from "@shared/systemFontFace";
+import { listRawSystemFontFaces } from "./systemFontFaces";
 import iconv from "iconv-lite";
 import { detectTextFileEncoding } from "./detectTextEncoding";
 import { EBOOK_DOT_EXTENSIONS } from "@shared/ebookExtensions";
@@ -96,7 +98,7 @@ type RegisterMainIpcHandlersOptions = {
   mainWindowFocusState: { lastId: number | null };
 };
 
-let cachedSystemFonts: string[] | null = null;
+let cachedSystemFonts: RawSystemFontFace[] | null = null;
 
 /**
  * 迭代遍历子目录，避免符号链接 / 目录联接成环导致递归栈溢出；
@@ -775,11 +777,14 @@ export function registerMainIpcHandlers(
     }
 
     try {
+      const faces = await listRawSystemFontFaces();
+      if (faces.length > 0) {
+        cachedSystemFonts = faces;
+        return faces;
+      }
+      // 按字重枚举失败时退回族名列表，避免字体菜单为空
       const fonts = await getFonts({ disableQuoting: true });
-      const list = Array.from(new Set(fonts)).sort((a, b) =>
-        a.localeCompare(b, "zh-Hans-CN"),
-      );
-      // 成功才缓存；失败勿缓存空数组，否则后续窗口永远「未获取到」
+      const list = familyNamesToRawFaces(fonts);
       if (list.length > 0) cachedSystemFonts = list;
       return list;
     } catch (err) {

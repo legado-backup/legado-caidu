@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, webUtils } from "electron";
 import type { FileFilter } from "electron";
 import { EBOOK_CONVERT_DEFAULT_SUBDIR } from "@shared/ebookConvertPaths";
+import type { RawSystemFontFace } from "@shared/systemFontFace";
 import { CHARACTER_PORTRAIT_DEFAULT_SUBDIR } from "@shared/characterPortraitPaths";
 import {
   defaultAiDataCacheRoot,
@@ -715,7 +716,7 @@ const api = {
   setNativeTheme: (theme: string) => ipcRenderer.send("theme:set", theme),
   getPathForFile: (file: File) => webUtils.getPathForFile(file),
   listSystemFonts: () =>
-    ipcRenderer.invoke("fonts:listSystemFonts") as Promise<string[]>,
+    ipcRenderer.invoke("fonts:listSystemFonts") as Promise<RawSystemFontFace[]>,
   /** 解析当前用户终端默认字体族名（Windows Terminal / 控制台 FaceName / 平台回退）。 */
   getTerminalDefaultFontFace: () =>
     ipcRenderer.invoke("fonts:getTerminalDefaultFace") as Promise<string | null>,

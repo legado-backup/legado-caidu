@@ -29,6 +29,7 @@ import type {
   StealthHoverCursor,
   StealthPagePayload,
 } from "@shared/stealthReaderIpc";
+import { whenSystemFontFacesReady } from "./utils/systemFontCatalog";
 
 const PAD_PX = 2;
 const DRAG_THRESH_PX = 6;
@@ -1129,6 +1130,10 @@ watch(chapterLoading, (loading) => {
 });
 
 onMounted(() => {
+  void whenSystemFontFacesReady().then(() => {
+    updateMinSize();
+    relayoutFromCurrentStart();
+  });
   unsubscribers.push(
     window.colorTxt.onStealthReaderCommand((command, extra) => {
       onCommand(command, extra);

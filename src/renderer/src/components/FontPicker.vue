@@ -10,6 +10,7 @@ import IconButton from "./IconButton.vue";
 import LoadingDotsBounce from "./LoadingDotsBounce.vue";
 import VirtualList from "./VirtualList.vue";
 import { cssFontFamilyStack } from "../utils/fontFamilyCss";
+import { ensureSystemFontCatalog } from "../utils/systemFontCatalog";
 import {
   PRESET_FONT_KEYS,
   detectFontPickerSelection,
@@ -157,12 +158,9 @@ function setFontAndClose(fontFamily: string) {
 
 async function ensureSystemFontsLoaded() {
   if (systemFonts.value.length > 0 || systemFontsLoading.value) return;
-  const listFn = window.colorTxt?.listSystemFonts;
-  if (typeof listFn !== "function") return;
   systemFontsLoading.value = true;
   try {
-    const fonts = await listFn();
-    systemFonts.value = Array.isArray(fonts) ? fonts : [];
+    systemFonts.value = await ensureSystemFontCatalog();
   } catch {
     systemFonts.value = [];
   } finally {
