@@ -35,6 +35,8 @@ export function useAppChapterNavigation(deps: {
   currentFileIsMarkdown: Ref<boolean>;
   readerEditMode: Ref<boolean>;
   readingProgressSynced: Ref<boolean>;
+  /** 全屏过渡中：勿用中间态视口写进度 / 改章节高亮 */
+  suppressViewportProgressUpdates?: Ref<boolean>;
   stream: Stream;
   touchRecentFile: (
     path: string,
@@ -131,6 +133,7 @@ export function useAppChapterNavigation(deps: {
   }
 
   function onProbeLineChange(probeLine: number, fromScroll?: boolean) {
+    if (deps.suppressViewportProgressUpdates?.value) return;
     deps.lastProbeLine.value = probeLine;
     const idx = pickActiveChapterIdx(deps.chapters.value, probeLine);
     if (idx !== deps.activeChapterIdx.value) {

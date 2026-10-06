@@ -100,6 +100,7 @@ import { useAppReaderAnnotations } from "./composables/useAppReaderAnnotations";
 import { useAppReaderChrome } from "./composables/useAppReaderChrome";
 import { useAppReadingProgress } from "./composables/useAppReadingProgress";
 import { useAppReaderUiPrefs } from "./composables/useAppReaderUiPrefs";
+import { useFullscreenViewportPreserve } from "./composables/useFullscreenViewportPreserve";
 import { useReaderHudTip } from "./composables/useReaderHudTip";
 import { useAppShellThemeWatch } from "./composables/useAppShellThemeWatch";
 import { useAppSidebarSearch } from "./composables/useAppSidebarSearch";
@@ -292,10 +293,16 @@ const fullscreenSidebarPopoversSuppressCollapse = computed(
     fullscreenCharacterDrawerOpen.value ||
     fullscreenCharacterPopoversOpen.value,
 );
+/** chrome 构造时 preserve 尚未创建，用槽位转发「退出全屏前采锚」 */
+const prepareFullscreenExitViewportPreserveSlot = {
+  run: () => {},
+};
 const chrome = useAppReaderChrome({
   readerRef,
   fullscreenSidebarPopoversSuppressCollapse,
   readerEditMode,
+  prepareFullscreenExitViewportPreserve: () =>
+    prepareFullscreenExitViewportPreserveSlot.run(),
 });
 const {
   readerHudTipVisible,
@@ -341,6 +348,23 @@ const {
   bumpFullscreenCursorIdle,
   recordFullscreenPointer,
 } = chrome;
+const fullscreenViewportPreserve = useFullscreenViewportPreserve({
+  readerRef,
+  isFullscreenView,
+});
+const {
+  enabled: fullscreenViewportPreserveEnabled,
+  suppressViewportProgressUpdates,
+  noteStableAnchor: noteFullscreenViewportStableAnchor,
+  prepareFullscreenExit,
+  onPossibleFullscreenTransitionResize,
+  ensureExitAnchorBeforeChromeChange,
+  restoreAfterLeave: restoreFullscreenViewportAfterLeave,
+  onFullscreenEntered,
+} = fullscreenViewportPreserve;
+if (fullscreenViewportPreserveEnabled) {
+  prepareFullscreenExitViewportPreserveSlot.run = prepareFullscreenExit;
+}
 
 function setFullscreenHeaderOverlayEl(
   el: Element | ComponentPublicInstance | null,
@@ -2131,6 +2155,7 @@ const chapterNav = useAppChapterNavigation({
   currentFileIsMarkdown,
   readerEditMode,
   readingProgressSynced,
+  suppressViewportProgressUpdates,
   stream,
   touchRecentFile,
   chapterListScrollSmooth,
@@ -2812,6 +2837,8 @@ const readerUi = useAppReaderUiPrefs({
   viewportEndLine,
   viewportVisualProgressPercent,
   viewportAtBottom,
+  suppressViewportProgressUpdates,
+  noteFullscreenViewportStableAnchor,
   isVoiceReadBlocksFind,
   showReaderHudTip,
 });
@@ -3639,6 +3666,18 @@ useAppWindowBindings({
   updateFullscreenSidebarHover,
   endSidebarResize,
   dismissFullscreenChromeForNativeExit,
+  onPossibleFullscreenTransitionResize: fullscreenViewportPreserveEnabled
+    ? onPossibleFullscreenTransitionResize
+    : undefined,
+  ensureFullscreenExitAnchorBeforeChromeChange: fullscreenViewportPreserveEnabled
+    ? ensureExitAnchorBeforeChromeChange
+    : undefined,
+  restoreFullscreenViewportAfterLeave: fullscreenViewportPreserveEnabled
+    ? restoreFullscreenViewportAfterLeave
+    : undefined,
+  onFullscreenEntered: fullscreenViewportPreserveEnabled
+    ? onFullscreenEntered
+    : undefined,
   handleReaderChromeEscape,
   bumpFullscreenCursorIdle,
   recordFullscreenPointer,

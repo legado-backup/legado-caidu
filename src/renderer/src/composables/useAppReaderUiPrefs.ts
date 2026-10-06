@@ -49,20 +49,28 @@ export function useAppReaderUiPrefs(deps: {
   viewportEndLine: Ref<number>;
   viewportVisualProgressPercent: Ref<number>;
   viewportAtBottom: Ref<boolean>;
+  /** 全屏过渡中：冻结页脚进度所用的视口行，避免中间态跳动 */
+  suppressViewportProgressUpdates?: Ref<boolean>;
+  /** 稳态滚动时记录视口锚点（供全屏退出恢复） */
+  noteFullscreenViewportStableAnchor?: () => void;
   /** 语音朗读播放中：禁止打开查找栏 */
   isVoiceReadBlocksFind?: Ref<boolean>;
   /** 快捷键调节排版时，阅读区中央胶囊（如「字号：20」「字间距：0.5」） */
   showReaderHudTip?: (text: string) => void;
 }) {
   function onViewportTopLineChange(lineNumber: number) {
+    if (deps.suppressViewportProgressUpdates?.value) return;
     deps.viewportTopLine.value = lineNumber;
+    deps.noteFullscreenViewportStableAnchor?.();
   }
 
   function onViewportEndLineChange(lineNumber: number) {
+    if (deps.suppressViewportProgressUpdates?.value) return;
     deps.viewportEndLine.value = lineNumber;
   }
 
   function onViewportVisualProgressChange(percent: number, atBottom: boolean) {
+    if (deps.suppressViewportProgressUpdates?.value) return;
     deps.viewportVisualProgressPercent.value = percent;
     deps.viewportAtBottom.value = atBottom;
   }

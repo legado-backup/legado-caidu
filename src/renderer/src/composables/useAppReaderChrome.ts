@@ -74,6 +74,8 @@ export function useAppReaderChrome(deps: {
   fullscreenSidebarPopoversSuppressCollapse: Ref<boolean>;
   /** 编辑模式光标常显，不走空闲隐藏 */
   readerEditMode: Ref<boolean>;
+  /** 应用内退出全屏前采锚（macOS 过渡动画会打乱视口） */
+  prepareFullscreenExitViewportPreserve?: () => void;
 }) {
   const isFullscreenView = ref(false);
   const isMinimalistView = ref(defaultIsMinimalistView);
@@ -230,6 +232,7 @@ export function useAppReaderChrome(deps: {
     }
 
     try {
+      deps.prepareFullscreenExitViewportPreserve?.();
       await window.colorTxt.setFullscreen(false);
     } catch {
       // ignore; main-process fullscreen event will handle UI sync if possible

@@ -71,6 +71,11 @@ export function useAppWindowBindings(deps: {
   updateFullscreenSidebarHover: (ev: MouseEvent) => void;
   endSidebarResize: () => void;
   dismissFullscreenChromeForNativeExit: () => void;
+  /** macOS 全屏过渡：resize 冻结锚点；离开前采锚、离开后恢复视口 */
+  onPossibleFullscreenTransitionResize?: () => void;
+  ensureFullscreenExitAnchorBeforeChromeChange?: () => void;
+  restoreFullscreenViewportAfterLeave?: () => void | Promise<void>;
+  onFullscreenEntered?: () => void;
   /** 极简 / 全屏 Esc：关蒙版后的查找栏、浮动栏、连按两次退出全屏 */
   handleReaderChromeEscape: (ev: KeyboardEvent) => boolean;
   /** chrome 自动隐藏时鼠标移动重置「空闲隐藏光标」计时 */
@@ -194,8 +199,9 @@ export function useAppWindowBindings(deps: {
 
     const onFullscreenChange = (payload: { isFullscreen: boolean }) => {
       const inFs = payload.isFullscreen;
-      deps.isFullscreenView.value = inFs;
       if (inFs) {
+        deps.isFullscreenView.value = true;
+        deps.onFullscreenEntered?.();
         void nextTick(() => {
           requestAnimationFrame(() => {
             deps.readerRef.value?.focusEditor?.();
@@ -206,6 +212,19 @@ export function useAppWindowBindings(deps: {
         });
         return;
       }
+      // macOS：先锁定锚点再恢复 chrome，最后按锚点复位；其它平台保持原同步路径
+      if (deps.ensureFullscreenExitAnchorBeforeChromeChange) {
+        deps.ensureFullscreenExitAnchorBeforeChromeChange();
+        deps.isFullscreenView.value = false;
+        deps.dismissFullscreenChromeForNativeExit();
+        void Promise.resolve(
+          deps.restoreFullscreenViewportAfterLeave?.(),
+        ).finally(() => {
+          pulseChapterListAfterChromeLayout();
+        });
+        return;
+      }
+      deps.isFullscreenView.value = false;
       deps.dismissFullscreenChromeForNativeExit();
       pulseChapterListAfterChromeLayout();
     };
@@ -705,6 +724,7 @@ export function useAppWindowBindings(deps: {
       }
     };
     const onResize = () => {
+      deps.onPossibleFullscreenTransitionResize?.();
       deps.clampSidebarWidthToViewport();
     };
     window.addEventListener("resize", onResize);

@@ -101,6 +101,7 @@ import {
   computeScrollTopForLineAtViewportSlot,
   computeScrollTopForReaderViewportRestoreAnchor,
   READER_BOOKMARK_JUMP_SLOT_FROM_TOP,
+  READER_VIEWPORT_RESTORE_SLOT_FROM_TOP,
   resolveDisplayLineForViewportRestore,
   type ReaderViewportRestoreAnchor,
 } from "../reader/readerViewportAnchor";
@@ -1209,11 +1210,19 @@ function resolveDisplayLineToPhysical(displayLine: number): number {
   return Math.max(1, Math.floor(map(displayLine)));
 }
 
-function captureViewportRestoreAnchor(): ReaderViewportRestoreAnchor | null {
+function captureViewportRestoreAnchor(opts?: {
+  skipLayout?: boolean;
+}): ReaderViewportRestoreAnchor | null {
   const e = editor.value;
   const m = model.value;
   if (!e || !m) return null;
-  return captureReaderViewportRestoreAnchor(e, m, resolveDisplayLineToPhysical);
+  return captureReaderViewportRestoreAnchor(
+    e,
+    m,
+    resolveDisplayLineToPhysical,
+    READER_VIEWPORT_RESTORE_SLOT_FROM_TOP,
+    opts,
+  );
 }
 
 function restoreViewportToRestoreAnchor(
@@ -4296,11 +4305,16 @@ function scrollLineToBottom(lineNumber: number, smooth = false) {
   e.setPosition({ lineNumber: line, column: 1 });
 }
 
-/** 供 `colorTxt.file.meta` 持久化；深拷贝为可 JSON 序列化的纯对象 */
-function getSerializedEditorViewState(): Record<string, unknown> | null {
+/** 内存短生命周期快照（全屏进出恢复）；勿持久化，可能含不可 JSON 的引用 */
+function captureEditorViewState(): monaco.editor.ICodeEditorViewState | null {
   const e = editor.value;
   if (!e) return null;
-  const vs = e.saveViewState();
+  return e.saveViewState();
+}
+
+/** 供 `colorTxt.file.meta` 持久化；深拷贝为可 JSON 序列化的纯对象 */
+function getSerializedEditorViewState(): Record<string, unknown> | null {
+  const vs = captureEditorViewState();
   if (!vs) return null;
   try {
     return JSON.parse(JSON.stringify(vs)) as Record<string, unknown>;
@@ -4316,6 +4330,7 @@ function restoreEditorViewState(state: unknown): boolean {
   try {
     e.restoreViewState(state as monaco.editor.ICodeEditorViewState);
     scheduleReaderBackgroundStickyAlign();
+    emitProbeLine(false);
     return true;
   } catch {
     return false;
@@ -4549,6 +4564,7 @@ defineExpose({
   scrollLineToBottom,
   getScrollTop,
   scrollToScrollTop,
+  captureEditorViewState,
   getSerializedEditorViewState,
   restoreEditorViewState,
   applyEmbeddedImageAnchors,

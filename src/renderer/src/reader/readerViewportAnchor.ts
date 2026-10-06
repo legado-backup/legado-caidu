@@ -88,8 +88,9 @@ export function captureReaderViewportRestoreAnchor(
   model: monaco.editor.ITextModel,
   resolvePhysicalLine: (displayLine: number) => number,
   anchorSlotFromTop = READER_VIEWPORT_RESTORE_SLOT_FROM_TOP,
+  opts?: { skipLayout?: boolean },
 ): ReaderViewportRestoreAnchor | null {
-  editor.layout();
+  if (!opts?.skipLayout) editor.layout();
   const lineHeightPx = Math.max(
     1,
     editor.getOption(monaco.editor.EditorOption.lineHeight),
