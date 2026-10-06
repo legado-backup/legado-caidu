@@ -1,6 +1,9 @@
 import {
   DEFAULT_STEALTH_NAV_SHORTCUTS,
+  LEGACY_STEALTH_NAV_SHORTCUTS,
   STEALTH_NAV_SHORTCUT_IDS,
+  defaultStealthNavShortcuts,
+  isDarwinStealthNavPlatform,
   normalizeStealthNavShortcuts,
   type StealthNavShortcutId,
   type StealthNavShortcutMap,
@@ -194,8 +197,36 @@ function parseHexColor(raw: unknown, fallback: string): string {
   return /^#[0-9a-f]{6}$/.test(s) ? s : fallback;
 }
 
+/** 已把仍停在旧默认上的 Mac 快捷键升过一次；之后用户改回 Ctrl+方向键会保留。 */
+const MAC_NAV_SHORTCUT_REV = 1;
+
+function shortcutsMatch(
+  a: StealthShortcutMap,
+  b: StealthShortcutMap,
+): boolean {
+  return STEALTH_NAV_SHORTCUT_IDS.every((id) => a[id] === b[id]);
+}
+
 function parseShortcuts(raw: unknown): StealthShortcutMap {
   return normalizeStealthNavShortcuts(raw);
+}
+
+/**
+ * Mac 上四键仍是旧默认（Ctrl+方向键），或还没存过快捷键时，升到 Ctrl+Option+方向键。
+ * 已经改成其它组合则不动。
+ */
+function upgradeMacNavShortcuts(
+  raw: unknown,
+  rev: unknown,
+): { shortcuts: StealthShortcutMap; migrated: boolean } {
+  const parsed = parseShortcuts(raw);
+  if (!isDarwinStealthNavPlatform() || rev === MAC_NAV_SHORTCUT_REV) {
+    return { shortcuts: parsed, migrated: false };
+  }
+  if (raw != null && !shortcutsMatch(parsed, LEGACY_STEALTH_NAV_SHORTCUTS)) {
+    return { shortcuts: parsed, migrated: false };
+  }
+  return { shortcuts: defaultStealthNavShortcuts(), migrated: true };
 }
 
 export function loadStealthReaderSettings(): StealthReaderSettings {
@@ -208,7 +239,7 @@ export function loadStealthReaderSettings(): StealthReaderSettings {
       typeof data.fontFamily === "string" && data.fontFamily.trim()
         ? data.fontFamily
         : fallback.fontFamily;
-    return {
+    const settings: StealthReaderSettings = {
       fontFamily,
       fontSize: clampFontSize(Number(data.fontSize)),
       lineHeight:
@@ -238,7 +269,10 @@ export function loadStealthReaderSettings(): StealthReaderSettings {
           ? data.hideOnMouseLeave
           : fallback.hideOnMouseLeave,
       pinnedOtherFonts: parsePinnedOtherFonts(data.pinnedOtherFonts),
-      shortcuts: parseShortcuts(data.shortcuts),
+      shortcuts: upgradeMacNavShortcuts(
+        data.shortcuts,
+        data.macNavShortcutRev,
+      ).shortcuts,
       timedScroll: mergeTimedScrollSettings(
         data.timedScroll && typeof data.timedScroll === "object"
           ? (data.timedScroll as Partial<TimedScrollSettings>)
@@ -246,8 +280,28 @@ export function loadStealthReaderSettings(): StealthReaderSettings {
       ),
       bounds: parseBounds(data.bounds),
     };
+    persistMacNavShortcutUpgrade(settings);
+    return settings;
   } catch {
     return fallback;
+  }
+}
+
+function persistMacNavShortcutUpgrade(settings: StealthReaderSettings): void {
+  if (!isDarwinStealthNavPlatform()) return;
+  try {
+    const raw = localStorage.getItem(STEALTH_SETTINGS_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw) as Record<string, unknown>;
+    if (data.macNavShortcutRev === MAC_NAV_SHORTCUT_REV) return;
+    const upgraded = upgradeMacNavShortcuts(
+      data.shortcuts,
+      data.macNavShortcutRev,
+    );
+    if (!upgraded.migrated) return;
+    saveStealthReaderSettings({ ...settings, shortcuts: upgraded.shortcuts });
+  } catch {
+    /* 下次进入再试 */
   }
 }
 
@@ -270,6 +324,9 @@ export function saveStealthReaderSettings(
         hideOnMouseLeave: Boolean(settings.hideOnMouseLeave),
         pinnedOtherFonts: parsePinnedOtherFonts(settings.pinnedOtherFonts),
         shortcuts: parseShortcuts(settings.shortcuts),
+        ...(isDarwinStealthNavPlatform()
+          ? { macNavShortcutRev: MAC_NAV_SHORTCUT_REV }
+          : {}),
         timedScroll: mergeTimedScrollSettings(settings.timedScroll),
         bounds: settings.bounds,
       }),
