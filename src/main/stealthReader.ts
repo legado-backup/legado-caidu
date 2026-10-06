@@ -578,6 +578,20 @@ function createOverlayWindow(bounds: StealthBounds): BrowserWindow {
   return win;
 }
 
+/**
+ * 覆盖层 `setVisibleOnAllWorkspaces({ visibleOnFullScreen: true })` 在 macOS 上会
+ * `DockHide`（进程变成 UIElement），程序坞图标消失。关窗不会自动 DockShow。
+ * 应用未激活时 `dock.show()` 只改回前台策略，不会把应用抢到前面。
+ */
+function restoreDarwinDockIcon(): void {
+  if (process.platform !== "darwin" || !app.dock) return;
+  try {
+    if (!app.dock.isVisible()) void app.dock.show();
+  } catch {
+    /* 退出过程中可能已不可调 */
+  }
+}
+
 function restoreOwner(owner: BrowserWindow, line: number): void {
   if (owner.isDestroyed()) return;
   owner.setSkipTaskbar(false);
@@ -611,6 +625,7 @@ function teardown(restore: boolean): void {
     overlay.destroy();
   }
   overlayLogicalBounds = null;
+  restoreDarwinDockIcon();
   if (restore && s && !s.owner.isDestroyed()) {
     restoreOwner(s.owner, line);
   }
