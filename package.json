@@ -26,6 +26,7 @@
     "electron-updater": "^6.8.3",
     "font-list": "^2.0.2",
     "iconv-lite": "^0.7.2",
+    "koffi": "^3.3.2",
     "mdict-js": "^10.0.1",
     "opencc": "^1.3.1",
     "sharp": "file:scripts/sharp-pack-stub",
@@ -99,7 +100,8 @@
       "**/node_modules/onnxruntime-node/bin/**",
       "**/node_modules/@node-rs/jieba/**",
       "**/node_modules/@node-rs/jieba-*/**",
-      "**/node_modules/opencc/**"
+      "**/node_modules/opencc/**",
+      "**/node_modules/@koromix/koffi-*/**"
     ],
     "extraResources": [
       {

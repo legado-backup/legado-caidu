@@ -12,6 +12,11 @@ export const STEALTH_READER_IPC = {
   setBounds: "stealthReader:setBounds",
   setPosition: "stealthReader:setPosition",
   setMinSize: "stealthReader:setMinSize",
+  /**
+   * macOS：不可聚焦的透明窗不会套用 CSS cursor。
+   * 覆盖层在边缘悬停时把系统光标设成缩放样式。
+   */
+  setHoverCursor: "stealthReader:setHoverCursor",
   blur: "stealthReader:blur",
   /** 重申窗口透明（不改尺寸）；设置窗抢焦点 / 点按提示层结束后用 */
   refreshTransparency: "stealthReader:refreshTransparency",
@@ -35,6 +40,9 @@ export type StealthChapterSnapshot = {
   lineNumber: number;
   tocOrder?: number;
 };
+
+/** 摸鱼窗边缘悬停光标。仅 macOS 主进程会真正设置。 */
+export type StealthHoverCursor = "arrow" | "ns" | "ew" | "nesw" | "nwse";
 
 export type StealthBounds = {
   x: number;

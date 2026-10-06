@@ -17,7 +17,11 @@ import { execSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { jiebaKeepName, sqliteKeepName } from "./electron-pack-context.mjs";
+import {
+  jiebaKeepName,
+  shouldKeepKoffiFile,
+  sqliteKeepName,
+} from "./electron-pack-context.mjs";
 
 const root = process.cwd();
 
@@ -676,6 +680,65 @@ function pruneMdictJs(nodeModulesRoot) {
   }
 }
 
+/**
+ * 删掉裁剪后留下的空目录（不删除 root 本身）。
+ * @param {string} root
+ */
+function removeEmptyChildDirs(root) {
+  if (!fs.existsSync(root)) return;
+  for (const ent of fs.readdirSync(root, { withFileTypes: true })) {
+    if (!ent.isDirectory()) continue;
+    const abs = path.join(root, ent.name);
+    removeEmptyChildDirs(abs);
+    if (fs.existsSync(abs) && fs.readdirSync(abs).length === 0) rm(abs);
+  }
+}
+
+/**
+ * @param {string} root
+ * @param {string} plat
+ * @param {string} arch
+ */
+function stripKoffiTree(root, plat, arch) {
+  if (!fs.existsSync(root)) return;
+  rmFilesRecursive(
+    root,
+    (_name, abs) => shouldKeepKoffiFile(abs, plat, arch) === false,
+  );
+  removeEmptyChildDirs(root);
+}
+
+/**
+ * koffi 只给 macOS 摸鱼窗设系统缩放光标。
+ * 非 darwin 整包移除；darwin 只留 CJS 加载器和当前架构的 `.node`，源码与文档不进包。
+ * @param {string} nodeModulesRoot
+ * @param {string} plat
+ * @param {string} arch
+ */
+function pruneKoffi(nodeModulesRoot, plat, arch) {
+  if (plat !== "darwin") {
+    rm(path.join(nodeModulesRoot, "koffi"));
+    const koromix = path.join(nodeModulesRoot, "@koromix");
+    if (!fs.existsSync(koromix)) return;
+    for (const name of fs.readdirSync(koromix)) {
+      if (name.startsWith("koffi-")) rm(path.join(koromix, name));
+    }
+    if (fs.existsSync(koromix) && fs.readdirSync(koromix).length === 0) {
+      rm(koromix);
+    }
+    return;
+  }
+  const keep = arch === "arm64" ? "koffi-darwin-arm64" : "koffi-darwin-x64";
+  const koromix = path.join(nodeModulesRoot, "@koromix");
+  if (fs.existsSync(koromix)) {
+    for (const name of fs.readdirSync(koromix)) {
+      if (name.startsWith("koffi-") && name !== keep) rm(path.join(koromix, name));
+    }
+  }
+  stripKoffiTree(path.join(nodeModulesRoot, "koffi"), plat, arch);
+  stripKoffiTree(path.join(koromix, keep), plat, arch);
+}
+
 function main() {
   const { plat, arch, nm } = parseArgs();
   if (!fs.existsSync(nm)) {
@@ -690,6 +753,7 @@ function main() {
   ensureSharpPackStub(nm);
   pruneOnnxWebOrphans(nm);
 
+  pruneKoffi(nm, plat, arch);
   pruneBetterSqlite3(nm, plat, arch);
   pruneFontList(nm, plat);
   pruneSqliteVec(nm, plat, arch);

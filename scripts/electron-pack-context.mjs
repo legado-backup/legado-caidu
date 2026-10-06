@@ -71,6 +71,57 @@ export function normalizePackPath(file) {
   return file.replace(/\\/g, "/");
 }
 
+/** `require("koffi")` 的 CJS 链；其余是源码、文档和类型。 */
+const KOFFI_RUNTIME_FILES = new Set([
+  "package.json",
+  "LICENSE.txt",
+  "index.cjs",
+  "src/koffi/index.cjs",
+  "src/koffi/src/static.cjs",
+]);
+
+/**
+ * @param {string} rel
+ * @param {Set<string>} keepFiles
+ */
+function isKeptRel(rel, keepFiles) {
+  if (keepFiles.has(rel)) return true;
+  for (const keep of keepFiles) {
+    if (keep.startsWith(`${rel}/`)) return true;
+  }
+  return false;
+}
+
+/**
+ * koffi 仅 macOS 摸鱼窗用。非 darwin 整包排除；darwin 只留当前架构的加载器和 `.node`。
+ * @param {string} file
+ * @param {string} plat
+ * @param {string} arch
+ * @returns {boolean | null} null 表示不是 koffi 路径
+ */
+export function shouldKeepKoffiFile(file, plat, arch) {
+  const f = normalizePackPath(file);
+  const jsPkg = f.match(/\/node_modules\/koffi(?:\/(.*))?$/);
+  if (jsPkg) {
+    if (plat !== "darwin") return false;
+    const rel = jsPkg[1];
+    if (rel == null || rel === "") return true;
+    return isKeptRel(rel, KOFFI_RUNTIME_FILES);
+  }
+  const nativePkg = f.match(/\/node_modules\/@koromix\/(koffi-[^/]+)(?:\/(.*))?$/);
+  if (!nativePkg) return null;
+  if (plat !== "darwin") return false;
+  const keepName = arch === "arm64" ? "koffi-darwin-arm64" : "koffi-darwin-x64";
+  if (nativePkg[1] !== keepName) return false;
+  const rel = nativePkg[2];
+  if (rel == null || rel === "") return true;
+  const nodeDir = arch === "arm64" ? "darwin_arm64" : "darwin_x64";
+  return isKeptRel(
+    rel,
+    new Set(["package.json", "index.js", `${nodeDir}/koffi.node`]),
+  );
+}
+
 /**
  * 在 electron-builder 收集 node_modules 时排除非当前平台的文件。
  * @param {string} file
@@ -115,6 +166,9 @@ export function shouldIncludeNodeModuleFile(file) {
   if (f.includes("/@huggingface/transformers/dist/")) {
     if (!f.endsWith("/transformers.node.mjs")) return false;
   }
+
+  // koffi 仅 macOS 摸鱼窗设置系统缩放光标；非 darwin 整包丢掉，darwin 只留加载器和 .node。
+  if (shouldKeepKoffiFile(f, activePlat, activeArch) === false) return false;
 
   if (f.includes("/node_modules/opencc/")) {
     for (const drop of [

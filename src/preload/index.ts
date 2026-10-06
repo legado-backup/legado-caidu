@@ -26,6 +26,7 @@ import {
   type StealthCommand,
   type StealthChapterNavDirection,
   type StealthEnterPayload,
+  type StealthHoverCursor,
   type StealthOwnerChapterNavPayload,
   type StealthOwnerProgressPayload,
   type StealthPagePayload,
@@ -588,6 +589,10 @@ const api = {
     ipcRenderer.send(STEALTH_READER_IPC.setPosition, x, y),
   stealthReaderSetMinSize: (width: number, height: number) =>
     ipcRenderer.send(STEALTH_READER_IPC.setMinSize, width, height),
+  /** macOS 摸鱼窗边缘：CSS cursor 不生效，改由主进程设系统光标（同步，避免离开窗口后改写别的光标） */
+  stealthReaderSetHoverCursor: (cursor: StealthHoverCursor) => {
+    ipcRenderer.sendSync(STEALTH_READER_IPC.setHoverCursor, cursor);
+  },
   stealthReaderBlur: () => ipcRenderer.send(STEALTH_READER_IPC.blur),
   /** 重申摸鱼窗透明（不改尺寸）；`nudge` 时水平微移逼 DWM 重绘 */
   stealthReaderRefreshTransparency(nudge?: boolean): void {

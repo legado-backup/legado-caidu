@@ -26,6 +26,7 @@ import {
 import type {
   StealthBounds,
   StealthCommand,
+  StealthHoverCursor,
   StealthPagePayload,
 } from "@shared/stealthReaderIpc";
 
@@ -130,6 +131,7 @@ function onRootPointerEnter(): void {
 function onRootPointerLeave(): void {
   hovered.value = false;
   if (pointerDown) return;
+  syncMacHoverCursor(null);
   requestRefreshTransparency();
 }
 
@@ -750,6 +752,37 @@ let originReady = false;
 let minWinW = 8;
 let minWinH = 8;
 
+/**
+ * macOS 摸鱼窗 focusable:false，CSS `*-resize` 不会显示。
+ * Windows 仍走样式表，这里只在 Mac 上补系统光标。
+ */
+const macHoverCursorNative =
+  typeof navigator !== "undefined" &&
+  (/Mac/i.test(navigator.platform) || /Macintosh/.test(navigator.userAgent));
+
+let macHoverCursorSent: StealthHoverCursor | null = null;
+
+function hoverCursorForEdge(edge: Edge | null): StealthHoverCursor {
+  if (edge === "n" || edge === "s") return "ns";
+  if (edge === "e" || edge === "w") return "ew";
+  if (edge === "ne" || edge === "sw") return "nesw";
+  if (edge === "nw" || edge === "se") return "nwse";
+  return "arrow";
+}
+
+function syncMacHoverCursor(edge: Edge | null): void {
+  if (!macHoverCursorNative) return;
+  const cursor = hoverCursorForEdge(edge);
+  // 箭头只在变化时发；缩放光标每次移动都重设，避免系统在非 key 窗上把它改回箭头
+  if (cursor === "arrow" && macHoverCursorSent === "arrow") return;
+  macHoverCursorSent = cursor;
+  try {
+    window.colorTxt.stealthReaderSetHoverCursor(cursor);
+  } catch {
+    /* 窗口正在关闭 */
+  }
+}
+
 function edgeFromTarget(target: EventTarget | null): Edge | null {
   if (!(target instanceof HTMLElement)) return null;
   const edge = target.dataset.edge;
@@ -899,6 +932,7 @@ function finishPointer(ev: PointerEvent, commitClick: boolean): void {
 }
 
 function onPointerMove(ev: PointerEvent): void {
+  syncMacHoverCursor(resizing ?? edgeFromTarget(ev.target));
   if (!pointerDown) return;
   if ((ev.buttons & 1) === 0) {
     finishPointer(ev, false);
@@ -933,10 +967,12 @@ function onPointerMove(ev: PointerEvent): void {
 function onPointerUp(ev: PointerEvent): void {
   if (ev.button !== 0) return;
   finishPointer(ev, true);
+  syncMacHoverCursor(edgeFromTarget(ev.target));
 }
 
 function onPointerCancel(ev: PointerEvent): void {
   finishPointer(ev, false);
+  syncMacHoverCursor(null);
 }
 
 function onWheel(ev: WheelEvent): void {
@@ -1163,6 +1199,7 @@ onBeforeUnmount(() => {
   clearOwnerChapterNavPending();
   document.documentElement.style.background = "transparent";
   document.body.style.background = "transparent";
+  syncMacHoverCursor(null);
   clearPageCache();
   measureEl?.remove();
   measureEl = null;

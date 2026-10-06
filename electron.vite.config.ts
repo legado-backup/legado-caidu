@@ -395,6 +395,7 @@ export default defineConfig({
          *  - `cheerio` 依赖的 undici 会引用 `node:sqlite`（SqliteCacheStore）；经 alias 指向 stub，避免 ExperimentalWarning。
          *  - `electron-updater` 保持 CJS 动态 require 与依赖树习惯用法。
          *  - `ws` 内含对可选原生模块 `bufferutil`/`utf-8-validate` 的动态加载；打入 bundle 时会被解析成硬导入导致启动失败，故保持 external。
+         *  - `koffi` 含平台 `.node`，仅 macOS 摸鱼窗设系统缩放光标时按需 require。
          */
         external: [
           "font-list",
@@ -414,6 +415,7 @@ export default defineConfig({
           "onnxruntime-node",
           "onnxruntime-common",
           "opencc",
+          "koffi",
         ],
         output: {
           format: "es",

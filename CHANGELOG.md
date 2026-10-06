@@ -6,7 +6,8 @@
 
 修复：
 
-- Mac下退出全屏模式阅读进度异常问题 [#99](https://github.com/ssnangua/ColorTxt/issues/99)
+- (Mac) 鼠标移到摸鱼窗口边缘时会显示调整窗口大小的光标
+- (Mac) 退出全屏模式阅读进度异常 [#99](https://github.com/ssnangua/ColorTxt/issues/99)
 
 ## 3.8.11
 
@@ -14,7 +15,7 @@
 
 - 「摸鱼模式」优化：
   - 进入时改为半透明绿色左右点按提示层（「上一页」/「下一页」），点击后关闭
-  - Windows 下可缩到单行高度（系统最小窗高用 `setShape` 绕过）
+  - (Windows) 可缩到单行高度（系统最小窗高用 `setShape` 绕过）
   - 出右键菜单时点窗口只收菜单不翻页
 - **Edge TTS** 朗读时支持按标点**插入停顿** [#90](https://github.com/ssnangua/ColorTxt/pull/90)
   - 「设置 → 语音朗读 → Edge TTS」新增「句中停顿」（`，；：、`，0～600ms）和「句末停顿」（`。！？…`，0～1200ms）配置项，`0` 为默认行为
@@ -28,7 +29,7 @@
 
 - 极简 / 全屏浮动侧栏里，「文件」分类下拉的「分类管理」现在可以正常打开 [#89](https://github.com/ssnangua/ColorTxt/issues/89)
 - 摸鱼窗口拖动移动时钉死逻辑宽高，避免在某些情况下窗体被越拖越大 [#89](https://github.com/ssnangua/ColorTxt/issues/89)
-- Windows 下，点任务栏时，系统会强行把任务栏抬到前面，导致摸鱼窗口被压到下面，现在会在指针进入任务栏区域时立刻重申置顶，并周期兜底以覆盖关窗等层级重排 [#91](https://github.com/ssnangua/ColorTxt/issues/91)
+- (Windows) 点任务栏时，系统会强行把任务栏抬到前面，导致摸鱼窗口被压到下面，现在会在指针进入任务栏区域时立刻重申置顶，并周期兜底以覆盖关窗等层级重排 [#91](https://github.com/ssnangua/ColorTxt/issues/91)
 - 电子书转 Markdown 时，段落里的行内图片（如字形图）不再拆成独占行插图，阅读器按字号显示在句中
 - 侧栏文件列表按「打开时间」排序时
   - 启动后因 meta 尚未加载而排成文件名顺序，现在可正常排序
@@ -312,7 +313,7 @@
     - 底栏「文件路径」菜单：上传/同步「书包」（基于当前打开文件导出的带阅读进度的书包）
   - 找书窗口：
     - 顶栏「WebDAV」菜单可分别上传/同步「书架 / 书源 / 设置」
-- 语音朗读：Windows 新增服务商「**讲述人自然语音**」（通过 Windows SAPI5 调用本机音色，需安装适配器与语音包，如 [NaturalVoiceSAPIAdapter](https://github.com/gexgd0419/NaturalVoiceSAPIAdapter)） [#36](https://github.com/ssnangua/ColorTxt/issues/36)
+- (Windows) 语音朗读：新增服务商「**讲述人自然语音**」（通过 Windows SAPI5 调用本机音色，需安装适配器与语音包，如 [NaturalVoiceSAPIAdapter](https://github.com/gexgd0419/NaturalVoiceSAPIAdapter)） [#36](https://github.com/ssnangua/ColorTxt/issues/36)
 - 「设置 → 常规 → 数据管理」：新增「**阅读数据**」面板，可管理各书阅读数据
 
 改进：
@@ -539,7 +540,7 @@
 
 修复：
 
-- macOS 现在可以正常退出应用
+- (Mac) 现在可以正常退出应用
 
 ## 2.3
 
@@ -662,9 +663,9 @@
 
 构建相关：
 
-- Windows：安装包支持自定义安装路径
-- Windows：输出便携版（Portable）
-- Linux：输出 AppImage 包
+- (Windows) 安装包支持自定义安装路径
+- (Windows) 输出便携版（Portable）
+- (Linux) 输出 AppImage 包
 
 新功能：
 
