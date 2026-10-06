@@ -327,8 +327,9 @@ async function refreshEmbedModels(opts?: { pullDone?: AppPullFlashDone }) {
   }
 }
 
-/** 远程嵌入：聚焦模型输入且尚无建议列表时静默拉取（与原先下拉展开行为一致） */
-function onRemoteEmbedModelFocusIn() {
+/** 远程嵌入：聚焦模型输入且尚无建议列表时静默拉取。按钮聚焦不触发，避免抢先把「拉取模型」点成静默请求。 */
+function onRemoteEmbedModelFocusIn(ev: FocusEvent) {
+  if (!(ev.target instanceof HTMLInputElement)) return;
   if (isBuiltin.value || embedModelsLoading.value) return;
   if (embedModelOptions.value.length > 0) return;
   void refreshEmbedModels();

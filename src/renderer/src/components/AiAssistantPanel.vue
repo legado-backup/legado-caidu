@@ -571,11 +571,9 @@ async function refreshChatModels(opts?: { composerSuccessFlash?: boolean }) {
     if (r.ok) {
       chatModelOptions.value = sortChatModelsForBaseUrl(chat.baseUrl, r.models);
       chatModelsListFingerprint.value = fp;
-      if (chatModelOptions.value.length > 0) {
-        const cur = activeChatModel.value.trim();
-        if (!cur || !chatModelOptions.value.includes(cur)) {
-          activeChatModel.value = chatModelOptions.value[0]!;
-        }
+      // 已选手输模型不在列表里时保留，避免侧栏一拉取就把设置里的模型 ID 换成列表第一项
+      if (chatModelOptions.value.length > 0 && !activeChatModel.value.trim()) {
+        activeChatModel.value = chatModelOptions.value[0]!;
       }
     } else {
       chatModelOptions.value = [];

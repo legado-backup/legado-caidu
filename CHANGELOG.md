@@ -1,5 +1,9 @@
 ## 3.8.12
 
+改进：
+
+- 「设置 → AI 阅读助手 → 对话模型」支持手动输入模型 ID（部分服务商没有提供模型查询接口） [#100](https://github.com/ssnangua/ColorTxt/issues/100)
+
 修复：
 
 - Mac下退出全屏模式阅读进度异常问题 [#99](https://github.com/ssnangua/ColorTxt/issues/99)

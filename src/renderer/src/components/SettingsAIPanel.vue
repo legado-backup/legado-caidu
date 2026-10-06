@@ -131,15 +131,34 @@ watch(
   { immediate: true },
 );
 
+function chatModelsEndpointKey(): string {
+  const c = modelValue.value.chat;
+  return `${c.baseUrl.trim()}\0${c.apiKey}`;
+}
+
+/** 接口地址或密钥变化后丢弃旧建议，下次聚焦再拉，避免点到别的服务商的模型 */
+watch(chatModelsEndpointKey, () => {
+  chatModelOptions.value = [];
+});
+
+let chatModelsReqSeq = 0;
+
 async function refreshChatModels(opts?: { pullDone?: AppPullFlashDone }) {
   const pullDone = opts?.pullDone;
+  const seq = ++chatModelsReqSeq;
+  const endpointKey = chatModelsEndpointKey();
   chatModelsLoading.value = true;
   let ok = false;
+  let aborted = false;
   try {
     const r = await window.colorTxt.ai.modelsList({
       baseUrl: modelValue.value.chat.baseUrl,
       apiKey: modelValue.value.chat.apiKey,
     });
+    if (seq !== chatModelsReqSeq || chatModelsEndpointKey() !== endpointKey) {
+      aborted = true;
+      return;
+    }
     ok = r.ok;
     if (r.ok) {
       chatModelOptions.value = sortChatModelsForBaseUrl(
@@ -155,14 +174,20 @@ async function refreshChatModels(opts?: { pullDone?: AppPullFlashDone }) {
       }
     } else chatModelOptions.value = [];
   } finally {
-    chatModelsLoading.value = false;
-    if (pullDone) pullDone(ok);
-    else chatPullBtnRef.value?.clearStaleFailOnSilentSuccess(ok);
+    if (seq !== chatModelsReqSeq) {
+      pullDone?.("abort");
+    } else {
+      chatModelsLoading.value = false;
+      if (aborted) pullDone?.("abort");
+      else if (pullDone) pullDone(ok);
+      else chatPullBtnRef.value?.clearStaleFailOnSilentSuccess(ok);
+    }
   }
 }
 
-/** 聚焦模型输入且尚无建议列表时静默拉取（与远程嵌入模型一致） */
-function onChatModelFocusIn() {
+/** 聚焦模型输入且尚无建议列表时静默拉取。按钮聚焦不触发，避免抢先把「拉取模型」点成静默请求。 */
+function onChatModelFocusIn(ev: FocusEvent) {
+  if (!(ev.target instanceof HTMLInputElement)) return;
   if (chatModelsLoading.value) return;
   if (chatModelOptions.value.length > 0) return;
   void refreshChatModels();
@@ -432,6 +457,7 @@ defineExpose({
                   v-model="modelValue.chat.model"
                   :suggestions="chatModelOptions"
                   placeholder="输入模型 ID…"
+                  input-class="aiRowStretchInput"
                   aria-label="对话模型"
                   :scroll-max-height="260"
                 />
@@ -846,6 +872,7 @@ defineExpose({
 .aiChatModelToolbar :deep(.apiEndpointInput) {
   flex: 1 1 160px;
   min-width: 0;
+  max-width: 100%;
 }
 
 .aiDataCachePicker {
@@ -938,11 +965,6 @@ defineExpose({
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  min-width: 0;
-}
-
-.aiModelSelect {
-  flex: 1 1 160px;
   min-width: 0;
 }
 

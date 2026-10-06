@@ -30,7 +30,7 @@
 | 方案内容 | 对话方案含完整 **`AIChatEndpoint`**（含 **`systemPromptExtra`**、Token 单价等）；文生图方案含完整 **`AITxt2ImgConfig`**（含 **`enabled`**、后端、密钥、采样/尺寸/Comfy 工作流等） |
 | 不随方案变 | 向量模型、RAG 切块、快速提问、数据缓存目录、立绘缓存根目录、技能、语音朗读等仍为全局项 |
 | API 密钥 | 各方案密钥加密存于 **`ai.chatProfileKeys`** / **`ai.txt2imgProfileKeys`**（JSON：`profileId → apiKey`）。**设置 → 确定** 时经 **`ai:config:set`** → **`saveAiConfig`** 落盘；关窗 **`persistSettings()`** **不写**保险库。启动时 **`hydrateApiKeysFromVault`** 从保险库灌回内存，并将已废弃旧槽（见下节）一次性迁入 profile 映射后删除 |
-| 侧栏 | 无方案切换 UI；设置保存后 **`aiAssistantConfigSyncNonce`** 递增，阅读助手重新拉取对话模型列表 |
+| 侧栏 | 无方案切换 UI；设置保存后 **`aiAssistantConfigSyncNonce`** 递增，阅读助手重新拉取对话模型列表。底栏模型菜单仍是下拉：已选 ID 不在新列表中时保留，并排在列表前，不会被换成第一项 |
 
 实现见 **`@shared/aiEndpointProfiles`**、**`@shared/secretSlots`**、**`ai/infra/config.ts`**、**`secretStorage.ts`**（载入时旧版单套配置自动迁移为「默认」方案；旧单密钥 slot 仅读一次）。
 
@@ -60,7 +60,8 @@
 说明：
 
 - **深度思考「已适配」**：侧栏开启「深度思考」时，应用会发送该厂商文档对应的思考开关；流式思考文案优先解析 `reasoning_content` / `reasoning` / `thinking` / `thought` 等 delta 字段（因上游而异）。
-- **拉取模型列表**：`GET {baseUrl}/models`；有 API Key 时附带认证（MiMo 为 **`api-key`**，其余多为 Bearer）。**拉取失败时不展示本地预设模型**（与其它服务商一致）。MiMo 成功后会 **`sortChatModelsForBaseUrl`** 去掉 `-tts`/`-asr` 并按 `vX.Y` 版本新→旧排序。
+- **对话模型 ID**：设置页「模型」是 **`ApiEndpointInput`**（占位「输入模型 ID…」），可直接填写任意 ID，不依赖服务商提供 `GET /models`。已拉取的 id 作为建议；聚焦**输入框**且尚无建议时静默拉取（「拉取模型」「测试连接」不走这条静默路径，避免按钮的成功/失败反馈被吃掉）。**仅当输入框为空**时，成功结果才填入列表第一项；已填写的 ID（包括不在列表里的手输值）不覆盖。接口地址或 API 密钥一变就丢掉建议缓存，进行中的旧请求结果也不写回。
+- **拉取模型列表**：`GET {baseUrl}/models`；有 API Key 时附带认证（MiMo 为 **`api-key`**，其余多为 Bearer）。**拉取失败时不展示本地预设模型**（与其它服务商一致），输入框里已有的 ID 保持不动。MiMo 成功后会 **`sortChatModelsForBaseUrl`** 去掉 `-tts`/`-asr` 并按 `vX.Y` 版本新→旧排序。侧栏底栏模型菜单仍是 **`AppCustomSelect`**，不能在那里新打 ID；当前手输 ID 不在列表中时保留并排在前面。
 - **测试连接（对话）**：**`ai:test:chat`** 发送极简 **`POST …/chat/completions`**（不出长文）；HTTP **402** 或 body 中 **`insufficient_balance`** 统一提示 **「账户余额不足，无法发起对话。」**（**`registerAiIpc.ts`** → **`formatChatConnectionTestError`**）。
 - **工具调用轮数**：**`chat.maxToolRounds`**（设置页 **工具调用轮数**，默认见 **`DEFAULT_MAX_TOOL_ROUNDS`**）限制单次 Agent 提问内模型↔工具往返次数；复杂任务可适当调高。
 - **未单独适配**：仍可使用对话与 Agent 工具，但不保证思考开关与思考流展示正常；自定义地址若与上表某行 **Base URL 一致**，保存后会自动匹配为对应预设项。
@@ -361,10 +362,10 @@ cardShellWrap（悬停抬高 z-index）
 | `ReaderSidebar.vue` | 侧栏容器：活动栏含 **笔记**、**AI 助手**、**角色** 等（`constants/readerSidebarTab.ts`）。<br>挂载 **`AnnotationListPanel`**、**`AiAssistantPanel`**、**`CharacterSidebarPanel`** 等；**`askAiWithQuote`** 切 tab 并 **`prefillQuotedText`**；**角色 → 更多 → 卡片效果** 子菜单（`CHARACTER_CARD_TEXTURE_EFFECTS`、分隔线、`AppShellMenuTeleport`）；`v-model:character-card-texture-effect` 与 `App.vue` 同步 |
 | `SettingsPanel.vue` | 设置壳层：确定时校验向量维度、**数据/模型缓存目录迁移**、`configSet`（AI 密钥）与 `emit('apply')`（含 **`persistVoiceReadSecretsToVault`**）；「数据管理 / 清除缓存」见 [基础功能.md](./基础功能.md) →「数据管理」 |
 | `SettingsTabBar.vue` | 页签含 **`voiceRead`** / `ai` / `vectorModel` / `txt2img` / `skills` / `edit` / `general` / `reading`。<br>`showAiExtensionTabs` 为 false 时隐藏向量模型 / 角色卡 / 技能扩展页签 |
-| `SettingsAIPanel.vue` | 「AI 阅读助手」：总开关；服务商含 **MiniMax**；**配置方案**；对话模型 + **测试连接**；Token 与 **`aiDataCacheDir`**；快速提问等 |
+| `SettingsAIPanel.vue` | 「AI 阅读助手」：总开关；服务商含 **MiniMax**；**配置方案**；对话模型（**`ApiEndpointInput`** 可手输模型 ID，拉取结果为建议）+ **测试连接**；Token 与 **`aiDataCacheDir`**；快速提问等 |
 | `AiMindmapView.vue` | 阅读助手思维导图：侧栏预览 + 全屏交互（markmap）；全部收起/展开、章节标题替换、**全展开** SVG 导出 |
 | `AiWordcloudView.vue` | 阅读助手词云：侧栏预览 + 全屏 Canvas（d3-cloud）；字体/角度/配色、重新生成（`layoutSeed`）、PNG 导出。全屏面板 `overflow: visible`（角度/配色菜单），顶栏自带上圆角 |
-| `ApiEndpointInput.vue` | 接口地址手填输入框 |
+| `ApiEndpointInput.vue` | 可手输文本 + 可选建议列表。接口地址的建议常为空；对话模型 ID、远程嵌入模型等把拉取结果当作建议 |
 | `AiTokenUsageBanner.vue` | Token 消耗与花费展示条（阅读助手、角色检索共用） |
 | `AiIndexProgressBanner.vue` | 向量建索引进度条（阅读助手建索引、角色检索前补索引） |
 | `SettingsVectorModelPanel.vue` | 「向量模型」：内置/远程；远程含 **测试连接** + 嵌入模型（建议+手输）；切块与 **`ragTopK`** |
