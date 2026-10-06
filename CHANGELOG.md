@@ -173,7 +173,7 @@
   - PDF 插图按 XObject 抽取（JPEG 原样、JPX/JBIG2 走 wasm），同一对象只解码一次，不再逐页 `getOperatorList`；底栏显示页进度
   - PDF 抽图正确展开 Indexed 调色板（含 4bit 打包索引），不再把索引字节当成 RGB 解成黑条 / 下半截全黑
 
-### 3.6.6
+## 3.6.6
 
 「词典」功能完善：
 
